@@ -31,41 +31,48 @@ def scrape_google_serp(url, num_results=5):
     import time
 
     options = Options()
-    driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=options)
-    driver.set_page_load_timeout(30)
-    driver.get(url)
-    time.sleep(5)  # Wait for page to load, increase if needed
-
-    # For debugging: Save current HTML
-    with open("last_serp_debug.html", "w", encoding="utf-8") as f:
-        f.write(driver.page_source)
-
+    driver = None
     results = []
-    # Each organic result block is in a div.tF2Cxc
-    result_divs = driver.find_elements(By.CSS_SELECTOR, 'div.tF2Cxc')
-    for div in result_divs[:num_results]:
-        try:
-            # Title
-            title_el = div.find_element(By.CSS_SELECTOR, 'h3')
-            # Link (always inside .yuRUbf > a)
-            link_el = div.find_element(By.CSS_SELECTOR, '.yuRUbf > a')
-            # Snippet (try both main snippet classes)
+    try:
+        driver = webdriver.Firefox(
+            service=Service(GeckoDriverManager().install()), options=options
+        )
+        driver.set_page_load_timeout(30)
+        driver.get(url)
+        time.sleep(5)  # Wait for page to load, increase if needed
+
+        # For debugging: Save current HTML
+        with open("last_serp_debug.html", "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
+
+        # Each organic result block is in a div.tF2Cxc
+        result_divs = driver.find_elements(By.CSS_SELECTOR, "div.tF2Cxc")
+        for div in result_divs[:num_results]:
             try:
-                snippet_el = div.find_element(By.CSS_SELECTOR, 'div.VwiC3b')
-            except Exception:
+                # Title
+                title_el = div.find_element(By.CSS_SELECTOR, "h3")
+                # Link (always inside .yuRUbf > a)
+                link_el = div.find_element(By.CSS_SELECTOR, ".yuRUbf > a")
+                # Snippet (try both main snippet classes)
                 try:
-                    snippet_el = div.find_element(By.CSS_SELECTOR, 'div.IsZvec')
+                    snippet_el = div.find_element(By.CSS_SELECTOR, "div.VwiC3b")
                 except Exception:
-                    snippet_el = None
-            results.append({
-                'title': title_el.text,
-                'link': link_el.get_attribute('href'),
-                'snippet': snippet_el.text if snippet_el else ''
-            })
-        except Exception as e:
-            # For debugging, you may want to print(e)
-            continue
-    driver.quit()
+                    try:
+                        snippet_el = div.find_element(By.CSS_SELECTOR, "div.IsZvec")
+                    except Exception:
+                        snippet_el = None
+                results.append({
+                    "title": title_el.text,
+                    "link": link_el.get_attribute("href"),
+                    "snippet": snippet_el.text if snippet_el else "",
+                })
+            except Exception:
+                # For debugging, you may want to print(e)
+                continue
+    finally:
+        if driver is not None:
+            driver.quit()
+
     return results
 
 
