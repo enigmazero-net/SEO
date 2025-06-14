@@ -1,0 +1,9 @@
+rake-nltk
+keybert
+pytrends
+pandas
+selenium
+webdriver-manager
+umap-learn
+yake
+bertopic
