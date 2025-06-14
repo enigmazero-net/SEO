@@ -3,12 +3,7 @@ import csv
 from rake_nltk import Rake
 from keybert import KeyBERT
 from umap import UMAP
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.options import Options
-from webdriver_manager.firefox import GeckoDriverManager
-from selenium.webdriver.firefox.service import Service
-import time
+from playwright.sync_api import sync_playwright
 import warnings
 
 # Optional keyword extraction libraries
@@ -24,51 +19,41 @@ except Exception:
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-def scrape_google_serp(url, num_results=5, wait=60):
+def scrape_google_serp(url, num_results=5):
+    """Open a Google results page with Playwright and parse the top results."""
 
-    options = Options()
-    driver = None
     results = []
-    try:
-        driver = webdriver.Firefox(
-            service=Service(GeckoDriverManager().install()), options=options
+    with sync_playwright() as p:
+        browser = p.firefox.launch(headless=False)
+        page = browser.new_page()
+        page.goto(url, timeout=60000)
+        input(
+            "Press Enter after the page loads and any CAPTCHA is solved..."
         )
-        driver.set_page_load_timeout(max(wait, 30))
-        driver.get(url)
-        print(f"Waiting {wait} seconds for the page to load. Solve any CAPTCHA if present...")
-        time.sleep(wait)
 
         # For debugging: Save current HTML
         with open("last_serp_debug.html", "w", encoding="utf-8") as f:
-            f.write(driver.page_source)
+            f.write(page.content())
 
         # Each organic result block is in a div.tF2Cxc
-        result_divs = driver.find_elements(By.CSS_SELECTOR, "div.tF2Cxc")
+        result_divs = page.query_selector_all("div.tF2Cxc")
         for div in result_divs[:num_results]:
             try:
-                # Title
-                title_el = div.find_element(By.CSS_SELECTOR, "h3")
-                # Link (always inside .yuRUbf > a)
-                link_el = div.find_element(By.CSS_SELECTOR, ".yuRUbf > a")
-                # Snippet (try both main snippet classes)
-                try:
-                    snippet_el = div.find_element(By.CSS_SELECTOR, "div.VwiC3b")
-                except Exception:
-                    try:
-                        snippet_el = div.find_element(By.CSS_SELECTOR, "div.IsZvec")
-                    except Exception:
-                        snippet_el = None
-                results.append({
-                    "title": title_el.text,
-                    "link": link_el.get_attribute("href"),
-                    "snippet": snippet_el.text if snippet_el else "",
-                })
+                title_el = div.query_selector("h3")
+                link_el = div.query_selector(".yuRUbf > a")
+                snippet_el = div.query_selector("div.VwiC3b") or div.query_selector(
+                    "div.IsZvec"
+                )
+                results.append(
+                    {
+                        "title": title_el.inner_text() if title_el else "",
+                        "link": link_el.get_attribute("href") if link_el else "",
+                        "snippet": snippet_el.inner_text() if snippet_el else "",
+                    }
+                )
             except Exception:
-                # For debugging, you may want to print(e)
                 continue
-    finally:
-        if driver is not None:
-            driver.quit()
+        browser.close()
 
     return results
 

@@ -1,9 +1,8 @@
 rake-nltk
 keybert
 pytrends
+playwright
 pandas
-selenium
-webdriver-manager
 umap-learn
 yake
 bertopic

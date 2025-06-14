@@ -5,8 +5,8 @@ This repository contains Python scripts for extracting keywords from text and fo
 ## Requirements
 
 - Python 3.10 or newer
-- Firefox browser for Selenium
 - The Python packages listed in `requirements.txt`
+- Playwright must download its browser binaries (see Setup)
 
 Optional features require additional libraries as noted below.
 
@@ -25,7 +25,13 @@ Optional features require additional libraries as noted below.
    pip install -r requirements.txt
    ```
 
-3. Download the NLTK datasets needed by RAKE:
+3. Install Playwright browsers (only needed once):
+
+   ```bash
+   playwright install firefox
+   ```
+
+4. Download the NLTK datasets needed by RAKE:
 
    ```bash
    python download_nltk_data.py
@@ -34,7 +40,7 @@ Optional features require additional libraries as noted below.
 ## Usage
 
 - **`demo_keywords.py`** prompts for a single text block, extracts keywords with RAKE and KeyBERT, and writes the results to text files.
-- **`multi_keywords.py`** allows multiple texts and can optionally use YAKE and BERTopic for extra keywords, plus Selenium scraping of Google SERPs. The scraper waits 60 seconds after opening each results page so you can solve any CAPTCHA. Results are written to `keyword_alternatives_multi.txt` and `keyword_serp_multi.txt`.
+- **`multi_keywords.py`** allows multiple texts and can optionally use YAKE and BERTopic for extra keywords, plus Playwright scraping of Google SERPs. After opening each results page it pauses until you press **Enter**, giving you time to solve any CAPTCHA. Results are written to `keyword_alternatives_multi.txt` and `keyword_serp_multi.txt`.
 
 Both scripts print instructions interactively when run.
 
@@ -43,5 +49,11 @@ Both scripts print instructions interactively when run.
 - `yake` enables YAKE keyword extraction.
 - `bertopic` and `umap-learn` enable topic modeling with BERTopic.
 
-These packages are listed in `requirements.txt` but are not required for basic usage.
+These packages are optional and can be installed with:
+
+```bash
+pip install yake bertopic umap-learn
+```
+
+They are not required for basic usage.
 
