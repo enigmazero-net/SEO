@@ -147,7 +147,7 @@ def main():
 
             # BERTopic extraction (if available)
             if BERTopic is not None:
-                if len(texts) > 3:
+                if len(texts) >= 10:
                     num_docs = len(texts)
                     umap_model = UMAP(
                         n_neighbors=min(15, num_docs - 1),
@@ -164,7 +164,7 @@ def main():
                 else:
                     topic_keywords = []
                     print(
-                        "BERTopic requires at least 4 texts; skipping BERTopic extraction.",
+                        "BERTopic requires at least 10 texts; skipping BERTopic extraction.",
                     )
             else:
                 topic_keywords = []
