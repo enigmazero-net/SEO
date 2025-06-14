@@ -24,7 +24,7 @@ except Exception:
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-def scrape_google_serp(url, num_results=5):
+def scrape_google_serp(url, num_results=5, wait=60):
 
     options = Options()
     driver = None
@@ -33,9 +33,10 @@ def scrape_google_serp(url, num_results=5):
         driver = webdriver.Firefox(
             service=Service(GeckoDriverManager().install()), options=options
         )
-        driver.set_page_load_timeout(30)
+        driver.set_page_load_timeout(max(wait, 30))
         driver.get(url)
-        time.sleep(5)  # Wait for page to load, increase if needed
+        print(f"Waiting {wait} seconds for the page to load. Solve any CAPTCHA if present...")
+        time.sleep(wait)
 
         # For debugging: Save current HTML
         with open("last_serp_debug.html", "w", encoding="utf-8") as f:
