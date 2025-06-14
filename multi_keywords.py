@@ -2,6 +2,7 @@ import string
 import csv
 from rake_nltk import Rake
 from keybert import KeyBERT
+from umap import UMAP
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -147,7 +148,12 @@ def main():
             # BERTopic extraction (if available)
             if BERTopic is not None:
                 if len(texts) > 1:
-                    topic_model = BERTopic(verbose=False)
+                    num_docs = len(texts)
+                    umap_model = UMAP(
+                        n_neighbors=max(2, min(15, num_docs - 1)),
+                        n_components=min(2, num_docs - 1),
+                    )
+                    topic_model = BERTopic(verbose=False, umap_model=umap_model)
                     topics, _ = topic_model.fit_transform(texts)
                     topic_keywords = topic_model.get_topic(0) or []
                     topic_keywords = topic_keywords[:5]
