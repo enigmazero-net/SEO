@@ -78,10 +78,14 @@ def main():
         texts.append(txt)
     combined_text = " ".join(texts)
 
-    try:
-        num_runs = int(input("How many times to run the pipeline? (default 1): ").strip() or 1)
-    except ValueError:
-        num_runs = 1
+    # Always run the pipeline three times to generate a broader set of
+    # keywords.  The previous implementation prompted the user for this
+    # value, but the repeated prompt often led to the same keywords being
+    # selected across executions.  Running the extraction loop a fixed
+    # number of times gives BERTopic and the other extractors more data to
+    # work with without requiring additional input.
+    num_runs = 3
+    print("Running the pipeline 3 times...")
 
     with open("keyword_alternatives_multi.txt", "w") as alt_f, \
          open("keyword_serp_multi.txt", "w", encoding="utf-8") as serp_f, \
@@ -190,7 +194,11 @@ def main():
 
             # Human-in-the-loop scraping: prompt for each keyword
             serp_f.write(f"=== Run {run} ===\n")
-            for kw in list(phrases):
+            # Use the combined list of unique keywords from all extraction
+            # methods so Google searches cover RAKE, YAKE, KeyBERT and
+            # BERTopic results.  This helps diversify the search terms and
+            # reduces repetition across runs.
+            for _, kw, _ in unique_kw:
                 print(f"\n[!] Search for this keyword in Google: '{kw}'")
                 print("    1. Open your browser, search this keyword on Google.")
                 print("    2. Copy the URL of the results page.")
