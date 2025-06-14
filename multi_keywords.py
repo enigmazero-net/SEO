@@ -155,35 +155,36 @@ def main():
                 topic_keywords = []
                 print("BERTopic not installed; skipping BERTopic extraction.")
 
-            # Log to CSV
+            # Combine and deduplicate keywords across methods
+            all_kw = []
             for score, kw in top5:
-                csv_writer.writerow([run, "RAKE", kw, score])
+                all_kw.append(("RAKE", kw, score))
+            for score, kw in alternatives:
+                all_kw.append(("RAKE_alt", kw, score))
             for kw, score in kb_results:
-                csv_writer.writerow([run, "KeyBERT", kw, score])
+                all_kw.append(("KeyBERT", kw, score))
             for kw, score in yake_results:
-                csv_writer.writerow([run, "YAKE", kw, score])
+                all_kw.append(("YAKE", kw, score))
             for kw, score in topic_keywords:
-                csv_writer.writerow([run, "BERTopic", kw, score])
+                all_kw.append(("BERTopic", kw, score))
 
-            # Write alternatives + KeyBERT per run
+            unique_kw = []
+            seen_kw = set()
+            for method, kw, score in all_kw:
+                key = kw.lower()
+                if key not in seen_kw:
+                    seen_kw.add(key)
+                    unique_kw.append((method, kw, score))
+
+            # Log to CSV using unique keywords
+            for method, kw, score in unique_kw:
+                csv_writer.writerow([run, method, kw, score])
+
+            # Write unified keyword list per run
             alt_f.write(f"=== Run {run} ===\n")
-            alt_f.write("Top 5 RAKE keywords (phrase + score):\n")
-            for score, phrase in top5:
-                alt_f.write(f"- {phrase} (score: {score})\n")
-            alt_f.write("\nAlternative RAKE keywords (phrase + score):\n")
-            for score, phrase in alternatives:
-                alt_f.write(f"- {phrase} (score: {score})\n")
-            alt_f.write("\nTop 5 KeyBERT keywords (phrase + score):\n")
-            for phrase, score in kb_results:
-                alt_f.write(f"- {phrase} (score: {score:.4f})\n")
-            if yake_results:
-                alt_f.write("\nTop 5 YAKE keywords (phrase + score):\n")
-                for phrase, score in yake_results:
-                    alt_f.write(f"- {phrase} (score: {score})\n")
-            if topic_keywords:
-                alt_f.write("\nTop 5 BERTopic keywords (phrase + score):\n")
-                for phrase, score in topic_keywords:
-                    alt_f.write(f"- {phrase} (score: {score})\n")
+            alt_f.write("Unique keywords from all extractors (method + score):\n")
+            for method, kw, score in unique_kw:
+                alt_f.write(f"- {kw} [{method}] (score: {score})\n")
             alt_f.write("\n" + "="*50 + "\n")
 
             # Human-in-the-loop scraping: prompt for each keyword
