@@ -45,3 +45,8 @@ Both scripts print instructions interactively when run.
 
 These packages are listed in `requirements.txt` but are not required for basic usage.
 
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
