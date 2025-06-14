@@ -24,7 +24,8 @@ async def scrape_google_serp(url, num_results=5):
 
     results = []
     async with async_playwright() as p:
-        browser = await p.firefox.launch()
+        # Launch Firefox in non-headless mode so the window is visible
+        browser = await p.firefox.launch(headless=False)
         page = await browser.new_page()
         await page.goto(url)
         input("Press Enter when the page is fully loaded...")
