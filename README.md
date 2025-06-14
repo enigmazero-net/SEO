@@ -39,7 +39,7 @@ Optional features require additional libraries as noted below.
 ## Usage
 
 - **`demo_keywords.py`** prompts for a single text block, extracts keywords with RAKE and KeyBERT, and writes the results to text files.
-- **`multi_keywords.py`** allows multiple texts and can optionally use YAKE and BERTopic for extra keywords, plus Playwright scraping of Google SERPs. Each results page opens in a browser and the script pauses until you press Enter so you can solve any CAPTCHA. Results are written to `keyword_alternatives_multi.txt` and `keyword_serp_multi.txt`.
+- **`multi_keywords.py`** allows multiple texts and can optionally use YAKE and BERTopic for extra keywords, plus Playwright scraping of Google SERPs. The pipeline now runs three times automatically to provide a wider variety of keywords. Each results page opens in a browser and the script pauses until you press Enter so you can solve any CAPTCHA. Results are written to `keyword_alternatives_multi.txt` and `keyword_serp_multi.txt`.
 
 Both scripts print instructions interactively when run.
 
