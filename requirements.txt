@@ -2,8 +2,7 @@ rake-nltk
 keybert
 pytrends
 pandas
-selenium
-webdriver-manager
+playwright
 umap-learn
 yake
 bertopic
