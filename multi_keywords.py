@@ -144,11 +144,20 @@ def main():
 
             # BERTopic extraction (if available)
             if BERTopic is not None:
-                topic_model = BERTopic(verbose=False)
-                topics, _ = topic_model.fit_transform([combined_text])
-                topic_keywords = topic_model.get_topic(0) or []
-                topic_keywords = topic_keywords[:5]
-                print("Top 5 BERTopic keywords:", [kw for kw, _ in topic_keywords])
+                if len(texts) > 1:
+                    topic_model = BERTopic(verbose=False)
+                    topics, _ = topic_model.fit_transform(texts)
+                    topic_keywords = topic_model.get_topic(0) or []
+                    topic_keywords = topic_keywords[:5]
+                    print(
+                        "Top 5 BERTopic keywords:",
+                        [kw for kw, _ in topic_keywords],
+                    )
+                else:
+                    topic_keywords = []
+                    print(
+                        "Only one text provided; skipping BERTopic extraction.",
+                    )
             else:
                 topic_keywords = []
                 print("BERTopic not installed; skipping BERTopic extraction.")
