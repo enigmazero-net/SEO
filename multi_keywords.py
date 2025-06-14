@@ -1,4 +1,5 @@
 import string
+import csv
 from rake_nltk import Rake
 from keybert import KeyBERT
 from selenium import webdriver
@@ -8,6 +9,17 @@ from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.firefox.service import Service
 import time
 import warnings
+
+# Optional keyword extraction libraries
+try:
+    import yake
+except Exception:
+    yake = None  # YAKE not installed
+
+try:
+    from bertopic import BERTopic
+except Exception:
+    BERTopic = None  # BERTopic not installed
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -77,75 +89,127 @@ def main():
         texts.append(txt)
     combined_text = " ".join(texts)
 
-    # RAKE extraction
-    punctuations = string.punctuation.replace("&", "")
-    r = Rake(punctuations=punctuations)
-    r.extract_keywords_from_text(combined_text)
-    all_phrases = r.get_ranked_phrases_with_scores()
-    seen = set()
-    deduped_phrases = []
-    for score, phrase in all_phrases:
-        p_clean = phrase.strip().lower()
-        if p_clean not in seen:
-            deduped_phrases.append((score, phrase))
-            seen.add(p_clean)
-    top5 = deduped_phrases[:5]
-    alternatives = deduped_phrases[5:10]
-    if top5:
-        scores, phrases = zip(*top5)
-        print("\nTop 5 RAKE keywords:", phrases)
-    else:
-        phrases = []
+    try:
+        num_runs = int(input("How many times to run the pipeline? (default 1): ").strip() or 1)
+    except ValueError:
+        num_runs = 1
 
-    # KeyBERT extraction
-    kb = KeyBERT()
-    kb_results = kb.extract_keywords(
-        combined_text,
-        keyphrase_ngram_range=(1, 4),
-        stop_words='english',
-        top_n=5
-    )
-    print("\nTop 5 KeyBERT keywords:", [phrase for phrase, score in kb_results])
+    with open("keyword_alternatives_multi.txt", "w") as alt_f, \
+         open("keyword_serp_multi.txt", "w", encoding="utf-8") as serp_f, \
+         open("keyword_log.csv", "w", newline="", encoding="utf-8") as csv_f:
+        csv_writer = csv.writer(csv_f)
+        csv_writer.writerow(["run", "method", "keyword", "score"])
 
-    # Write alternatives + KeyBERT
-    with open("keyword_alternatives_multi.txt", "w") as f:
-        f.write("Top 5 RAKE keywords (phrase + score):\n")
-        for score, phrase in top5:
-            f.write(f"- {phrase} (score: {score})\n")
-        f.write("\nAlternative RAKE keywords (phrase + score):\n")
-        for score, phrase in alternatives:
-            f.write(f"- {phrase} (score: {score})\n")
-        f.write("\nTop 5 KeyBERT keywords (phrase + score):\n")
-        for phrase, score in kb_results:
-            f.write(f"- {phrase} (score: {score:.4f})\n")
-    print("Done! Alternatives and KeyBERT written to keyword_alternatives_multi.txt")
+        for run in range(1, num_runs + 1):
+            print(f"\n=== Run {run}/{num_runs} ===")
 
-    # Human-in-the-loop scraping: prompt for each keyword
-    with open("keyword_serp_multi.txt", "w", encoding='utf-8') as f:
-        for kw in list(phrases):
-            print(f"\n[!] Search for this keyword in Google: '{kw}'")
-            print("    1. Open your browser, search this keyword on Google.")
-            print("    2. Copy the URL of the results page.")
-            url = input("    3. Paste the Google search results URL here (or press Enter to skip): ").strip()
-            if not url:
-                print("    [Skipped!]")
-                f.write(f"Keyword: {kw}\n    [Skipped]\n" + "="*50 + "\n")
-                continue
-            print("    Opening browser and waiting for your action...")
+            # RAKE extraction
+            punctuations = string.punctuation.replace("&", "")
+            r = Rake(punctuations=punctuations)
+            r.extract_keywords_from_text(combined_text)
+            all_phrases = r.get_ranked_phrases_with_scores()
+            seen = set()
+            deduped_phrases = []
+            for score, phrase in all_phrases:
+                p_clean = phrase.strip().lower()
+                if p_clean not in seen:
+                    deduped_phrases.append((score, phrase))
+                    seen.add(p_clean)
+            top5 = deduped_phrases[:5]
+            alternatives = deduped_phrases[5:10]
+            if top5:
+                scores, phrases = zip(*top5)
+                print("Top 5 RAKE keywords:", phrases)
+            else:
+                phrases = []
 
-            try:
-                serp_data = scrape_google_serp(url)
-            except Exception as e:
-                print(f"  Error scraping SERP: {e}")
-                f.write(f"Keyword: {kw}\n  Error scraping SERP for {url}: {e}\n" + "="*50 + "\n")
-                continue
-            f.write(f"Keyword: {kw}\n")
-            if not serp_data:
-                f.write(f"  No SERP results found for {url}.\n")
-            for res in serp_data:
-                f.write(f"- {res['title']}\n  {res['snippet']}\n  {res['link']}\n")
-            f.write("\n" + "="*50 + "\n")
-            print("    Done! Results saved.")
+            # KeyBERT extraction
+            kb = KeyBERT()
+            kb_results = kb.extract_keywords(
+                combined_text,
+                keyphrase_ngram_range=(1, 4),
+                stop_words="english",
+                top_n=5,
+            )
+            print("Top 5 KeyBERT keywords:", [phrase for phrase, _ in kb_results])
+
+            # YAKE extraction (if available)
+            if yake is not None:
+                kw_extractor = yake.KeywordExtractor(lan="en", n=3, top=5)
+                yake_results = kw_extractor.extract_keywords(combined_text)
+                print("Top 5 YAKE keywords:", [kw for kw, _ in yake_results])
+            else:
+                yake_results = []
+                print("YAKE not installed; skipping YAKE extraction.")
+
+            # BERTopic extraction (if available)
+            if BERTopic is not None:
+                topic_model = BERTopic(verbose=False)
+                topics, _ = topic_model.fit_transform([combined_text])
+                topic_keywords = topic_model.get_topic(0) or []
+                topic_keywords = topic_keywords[:5]
+                print("Top 5 BERTopic keywords:", [kw for kw, _ in topic_keywords])
+            else:
+                topic_keywords = []
+                print("BERTopic not installed; skipping BERTopic extraction.")
+
+            # Log to CSV
+            for score, kw in top5:
+                csv_writer.writerow([run, "RAKE", kw, score])
+            for kw, score in kb_results:
+                csv_writer.writerow([run, "KeyBERT", kw, score])
+            for kw, score in yake_results:
+                csv_writer.writerow([run, "YAKE", kw, score])
+            for kw, score in topic_keywords:
+                csv_writer.writerow([run, "BERTopic", kw, score])
+
+            # Write alternatives + KeyBERT per run
+            alt_f.write(f"=== Run {run} ===\n")
+            alt_f.write("Top 5 RAKE keywords (phrase + score):\n")
+            for score, phrase in top5:
+                alt_f.write(f"- {phrase} (score: {score})\n")
+            alt_f.write("\nAlternative RAKE keywords (phrase + score):\n")
+            for score, phrase in alternatives:
+                alt_f.write(f"- {phrase} (score: {score})\n")
+            alt_f.write("\nTop 5 KeyBERT keywords (phrase + score):\n")
+            for phrase, score in kb_results:
+                alt_f.write(f"- {phrase} (score: {score:.4f})\n")
+            if yake_results:
+                alt_f.write("\nTop 5 YAKE keywords (phrase + score):\n")
+                for phrase, score in yake_results:
+                    alt_f.write(f"- {phrase} (score: {score})\n")
+            if topic_keywords:
+                alt_f.write("\nTop 5 BERTopic keywords (phrase + score):\n")
+                for phrase, score in topic_keywords:
+                    alt_f.write(f"- {phrase} (score: {score})\n")
+            alt_f.write("\n" + "="*50 + "\n")
+
+            # Human-in-the-loop scraping: prompt for each keyword
+            serp_f.write(f"=== Run {run} ===\n")
+            for kw in list(phrases):
+                print(f"\n[!] Search for this keyword in Google: '{kw}'")
+                print("    1. Open your browser, search this keyword on Google.")
+                print("    2. Copy the URL of the results page.")
+                url = input("    3. Paste the Google search results URL here (or press Enter to skip): ").strip()
+                if not url:
+                    print("    [Skipped!]")
+                    serp_f.write(f"Keyword: {kw}\n    [Skipped]\n" + "="*50 + "\n")
+                    continue
+                print("    Opening browser and waiting for your action...")
+
+                try:
+                    serp_data = scrape_google_serp(url)
+                except Exception as e:
+                    print(f"  Error scraping SERP: {e}")
+                    serp_f.write(f"Keyword: {kw}\n  Error scraping SERP for {url}: {e}\n" + "="*50 + "\n")
+                    continue
+                serp_f.write(f"Keyword: {kw}\n")
+                if not serp_data:
+                    serp_f.write(f"  No SERP results found for {url}.\n")
+                for res in serp_data:
+                    serp_f.write(f"- {res['title']}\n  {res['snippet']}\n  {res['link']}\n")
+                serp_f.write("\n" + "="*50 + "\n")
+                print("    Done! Results saved.")
 
     print("All keywords complete. SERP results written to keyword_serp_multi.txt")
 
