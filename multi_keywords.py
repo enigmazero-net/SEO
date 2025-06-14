@@ -24,11 +24,6 @@ except Exception:
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 def scrape_google_serp(url, num_results=5):
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.firefox.options import Options
-    from selenium.webdriver.firefox.service import Service
-    from webdriver_manager.firefox import GeckoDriverManager
-    import time
 
     options = Options()
     driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=options)
