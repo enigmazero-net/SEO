@@ -39,7 +39,7 @@ def scrape_google_serp(url, num_results=5, wait=60):
         time.sleep(wait)
 
         # For debugging: Save current HTML
-        with open("last_serp_debug.html", "w", encoding="utf-8") as f:
+        with open("last_serp.html", "w", encoding="utf-8") as f:
             f.write(driver.page_source)
 
         # Each organic result block is in a div.tF2Cxc
