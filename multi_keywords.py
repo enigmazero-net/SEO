@@ -1,0 +1,153 @@
+import string
+from rake_nltk import Rake
+from keybert import KeyBERT
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.options import Options
+from webdriver_manager.firefox import GeckoDriverManager
+from selenium.webdriver.firefox.service import Service
+import time
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+def scrape_google_serp(url, num_results=5):
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.firefox.options import Options
+    from selenium.webdriver.firefox.service import Service
+    from webdriver_manager.firefox import GeckoDriverManager
+    import time
+
+    options = Options()
+    driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=options)
+    driver.set_page_load_timeout(30)
+    driver.get(url)
+    time.sleep(5)  # Wait for page to load, increase if needed
+
+    # For debugging: Save current HTML
+    with open("last_serp_debug.html", "w", encoding="utf-8") as f:
+        f.write(driver.page_source)
+
+    results = []
+    # Each organic result block is in a div.tF2Cxc
+    result_divs = driver.find_elements(By.CSS_SELECTOR, 'div.tF2Cxc')
+    for div in result_divs[:num_results]:
+        try:
+            # Title
+            title_el = div.find_element(By.CSS_SELECTOR, 'h3')
+            # Link (always inside .yuRUbf > a)
+            link_el = div.find_element(By.CSS_SELECTOR, '.yuRUbf > a')
+            # Snippet (try both main snippet classes)
+            try:
+                snippet_el = div.find_element(By.CSS_SELECTOR, 'div.VwiC3b')
+            except Exception:
+                try:
+                    snippet_el = div.find_element(By.CSS_SELECTOR, 'div.IsZvec')
+                except Exception:
+                    snippet_el = None
+            results.append({
+                'title': title_el.text,
+                'link': link_el.get_attribute('href'),
+                'snippet': snippet_el.text if snippet_el else ''
+            })
+        except Exception as e:
+            # For debugging, you may want to print(e)
+            continue
+    driver.quit()
+    return results
+
+
+def main():
+    # Collect texts for keyword extraction
+    while True:
+        try:
+            num_prompts = int(input("How many texts would you like to enter? (1-3): ").strip())
+            if 1 <= num_prompts <= 3:
+                break
+            else:
+                print("Please enter a number between 1 and 3.")
+        except ValueError:
+            print("Please enter a valid integer between 1 and 3.")
+
+    texts = []
+    for i in range(num_prompts):
+        txt = input(f"Text #{i+1}: ").strip()
+        while not txt:
+            txt = input(f"Text #{i+1} (cannot be empty): ").strip()
+        texts.append(txt)
+    combined_text = " ".join(texts)
+
+    # RAKE extraction
+    punctuations = string.punctuation.replace("&", "")
+    r = Rake(punctuations=punctuations)
+    r.extract_keywords_from_text(combined_text)
+    all_phrases = r.get_ranked_phrases_with_scores()
+    seen = set()
+    deduped_phrases = []
+    for score, phrase in all_phrases:
+        p_clean = phrase.strip().lower()
+        if p_clean not in seen:
+            deduped_phrases.append((score, phrase))
+            seen.add(p_clean)
+    top5 = deduped_phrases[:5]
+    alternatives = deduped_phrases[5:10]
+    if top5:
+        scores, phrases = zip(*top5)
+        print("\nTop 5 RAKE keywords:", phrases)
+    else:
+        phrases = []
+
+    # KeyBERT extraction
+    kb = KeyBERT()
+    kb_results = kb.extract_keywords(
+        combined_text,
+        keyphrase_ngram_range=(1, 4),
+        stop_words='english',
+        top_n=5
+    )
+    print("\nTop 5 KeyBERT keywords:", [phrase for phrase, score in kb_results])
+
+    # Write alternatives + KeyBERT
+    with open("keyword_alternatives_multi.txt", "w") as f:
+        f.write("Top 5 RAKE keywords (phrase + score):\n")
+        for score, phrase in top5:
+            f.write(f"- {phrase} (score: {score})\n")
+        f.write("\nAlternative RAKE keywords (phrase + score):\n")
+        for score, phrase in alternatives:
+            f.write(f"- {phrase} (score: {score})\n")
+        f.write("\nTop 5 KeyBERT keywords (phrase + score):\n")
+        for phrase, score in kb_results:
+            f.write(f"- {phrase} (score: {score:.4f})\n")
+    print("Done! Alternatives and KeyBERT written to keyword_alternatives_multi.txt")
+
+    # Human-in-the-loop scraping: prompt for each keyword
+    with open("keyword_serp_multi.txt", "w", encoding='utf-8') as f:
+        for kw in list(phrases):
+            print(f"\n[!] Search for this keyword in Google: '{kw}'")
+            print("    1. Open your browser, search this keyword on Google.")
+            print("    2. Copy the URL of the results page.")
+            url = input("    3. Paste the Google search results URL here (or press Enter to skip): ").strip()
+            if not url:
+                print("    [Skipped!]")
+                f.write(f"Keyword: {kw}\n    [Skipped]\n" + "="*50 + "\n")
+                continue
+            print("    Opening browser and waiting for your action...")
+
+            try:
+                serp_data = scrape_google_serp(url)
+            except Exception as e:
+                print(f"  Error scraping SERP: {e}")
+                f.write(f"Keyword: {kw}\n  Error scraping SERP for {url}: {e}\n" + "="*50 + "\n")
+                continue
+            f.write(f"Keyword: {kw}\n")
+            if not serp_data:
+                f.write(f"  No SERP results found for {url}.\n")
+            for res in serp_data:
+                f.write(f"- {res['title']}\n  {res['snippet']}\n  {res['link']}\n")
+            f.write("\n" + "="*50 + "\n")
+            print("    Done! Results saved.")
+
+    print("All keywords complete. SERP results written to keyword_serp_multi.txt")
+
+if __name__ == "__main__":
+    main()
