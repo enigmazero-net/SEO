@@ -34,7 +34,7 @@ Optional features require additional libraries as noted below.
 ## Usage
 
 - **`demo_keywords.py`** prompts for a single text block, extracts keywords with RAKE and KeyBERT, and writes the results to text files.
-- **`multi_keywords.py`** allows multiple texts and can optionally use YAKE and BERTopic for extra keywords, plus Selenium scraping of Google SERPs. Results are written to `keyword_alternatives_multi.txt` and `keyword_serp_multi.txt`.
+- **`multi_keywords.py`** allows multiple texts and can optionally use YAKE and BERTopic for extra keywords, plus Selenium scraping of Google SERPs. The scraper waits 60 seconds after opening each results page so you can solve any CAPTCHA. Results are written to `keyword_alternatives_multi.txt` and `keyword_serp_multi.txt`.
 
 Both scripts print instructions interactively when run.
 
