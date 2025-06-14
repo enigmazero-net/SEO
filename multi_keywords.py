@@ -78,14 +78,11 @@ def main():
         texts.append(txt)
     combined_text = " ".join(texts)
 
-    # Always run the pipeline three times to generate a broader set of
-    # keywords.  The previous implementation prompted the user for this
-    # value, but the repeated prompt often led to the same keywords being
-    # selected across executions.  Running the extraction loop a fixed
-    # number of times gives BERTopic and the other extractors more data to
-    # work with without requiring additional input.
-    num_runs = 3
-    print("Running the pipeline 3 times...")
+    # With RAKE, KeyBERT and YAKE all enabled in a single pass, running the
+    # pipeline once provides plenty of keywords.  Multiple runs are no longer
+    # necessary, so we fix the loop to a single iteration.
+    num_runs = 1
+    print("Running the pipeline once...")
 
     with open("keyword_alternatives_multi.txt", "w") as alt_f, \
          open("keyword_serp_multi.txt", "w", encoding="utf-8") as serp_f, \
