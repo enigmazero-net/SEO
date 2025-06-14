@@ -76,13 +76,13 @@ def main():
     # Collect texts for keyword extraction
     while True:
         try:
-            num_prompts = int(input("How many texts would you like to enter? (1-3): ").strip())
-            if 1 <= num_prompts <= 3:
+            num_prompts = int(input("How many texts would you like to enter?: ").strip())
+            if num_prompts > 0:
                 break
             else:
-                print("Please enter a number between 1 and 3.")
+                print("Please enter a positive number.")
         except ValueError:
-            print("Please enter a valid integer between 1 and 3.")
+            print("Please enter a valid integer.")
 
     texts = []
     for i in range(num_prompts):
@@ -147,10 +147,10 @@ def main():
 
             # BERTopic extraction (if available)
             if BERTopic is not None:
-                if len(texts) > 1:
+                if len(texts) > 3:
                     num_docs = len(texts)
                     umap_model = UMAP(
-                        n_neighbors=max(2, min(15, num_docs - 1)),
+                        n_neighbors=min(15, num_docs - 1),
                         n_components=min(2, num_docs - 1),
                     )
                     topic_model = BERTopic(verbose=False, umap_model=umap_model)
@@ -164,7 +164,7 @@ def main():
                 else:
                     topic_keywords = []
                     print(
-                        "Only one text provided; skipping BERTopic extraction.",
+                        "BERTopic requires at least 4 texts; skipping BERTopic extraction.",
                     )
             else:
                 topic_keywords = []
